@@ -288,15 +288,6 @@ def match_monte_carlo(
     )
 
     finterface.save_data(
-        token=token, year=year, data_type="shotinfo", data=gedi_shots
-    )
-    finterface.save_data(
-        token=token, year=year, data_type="recovery", data=recovery_sample
-    )
-    finterface.save_data(
-        token=token, year=year, data_type="agbd", data=agbd_sample
-    )
-    finterface.save_data(
         token=token, year=year, data_type="master", data=master_df
     )
 
