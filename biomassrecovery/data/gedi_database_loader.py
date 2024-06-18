@@ -69,8 +69,9 @@ def parse_file(file: Path) -> gpd.GeoDataFrame:
 def filter_granules(
     gdf: gpd.GeoDataFrame, roi: Optional[gpd.GeoDataFrame]
 ) -> gpd.GeoDataFrame:
-    # Filter for shots where the algorithm was runnable
-    gdf = gdf[gdf.algorithm_run_flag == 1]
+    # Filter shots for quality criteria, more details:
+    # https://daac.ornl.gov/GEDI/guides/GEDI_L4A_AGB_Density.html
+    gdf = gdf[(gdf.algorithm_run_flag == 1) & (gdf.l2_quality_flag == 1) & (gdf.l4_quality_flag == 1) & (gdf.degrade_flag == 0)]
     if roi is None:
         return gdf
 

@@ -12,13 +12,13 @@ from pyspark.sql import DataFrame, SparkSession
 from shapely.geometry import Polygon
 from typing import List, Tuple
 
-from biomassrecovery.import constants
+from biomassrecovery import constants
 from biomassrecovery.data.jrc_loading import _to_nesw
 from biomassrecovery.processing.gedi_recovery_match_monte_carlo import match_monte_carlo
 from biomassrecovery.processing.recovery_analysis_models import (
     filter_shots,
-    run_median_regression_model,
-    run_ols_medians_model,
+#    run_median_regression_model,
+#    run_ols_medians_model,
 )
 from biomassrecovery.utils import logging_util
 
@@ -214,7 +214,7 @@ def _combine_dfs(experiment_data):
     experiment_id, dataframes = experiment_data
     return experiment_id, pd.concat(dataframes)
 
-
+"""
 def _run_experiment(experiment_data):
     experiment_id, dataframe = experiment_data
     # Require that the values are non-nan and that the recovery age is 3-22
@@ -230,18 +230,20 @@ def _run_experiment(experiment_data):
         dataframe["a_{}".format(experiment_id)] * 0.47
     )
     return run_median_regression_model(experiment_id, dataframe)
-
+"""
 
 def run_model_spark(spark, chunk_metadata, opts):
     finterface = FileInterface(opts.save_dir)
 
     processed_chunks = chunk_metadata[chunk_metadata.has_data == True]
     chunk_ids = [(x.year, x.token) for _, x in processed_chunks.iterrows()]
-
+    
+    # this step does the filtering
     rdd = spark.sparkContext.parallelize(chunk_ids, 32)
     filtered_shots = rdd.map(partial(filter_shots, opts, finterface))
     logger.info("n = {}".format(filtered_shots.map(len).sum()))
 
+    """
     results = []
     # N.b. taking 10 models out of every 100 generated.
     # We are filtering on the full 1000 generated data points
@@ -252,6 +254,7 @@ def run_model_spark(spark, chunk_metadata, opts):
     experiments = exploded.groupByKey().map(_combine_dfs)
     results.extend(experiments.map(_run_experiment).collect())
     return pd.concat(results, ignore_index=True)
+    """
 
 
 def exec_spark(args):
@@ -296,7 +299,7 @@ if __name__ == "__main__":
         help="List of years over which to search GEDI data",
         nargs="*",
         type=int,
-        default=[2019, 2020, 2021],
+        default=[2019, 2020, 2021, 2022],
     )
     parser.add_argument(
         "--filter_pctagree",
@@ -408,4 +411,4 @@ if __name__ == "__main__":
         exit(1)
 
     results = exec_spark(args)
-    results.to_feather(results_file)
+#    results.to_feather(results_file)

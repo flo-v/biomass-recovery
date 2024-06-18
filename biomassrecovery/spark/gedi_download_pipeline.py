@@ -57,9 +57,9 @@ def _fetch_cookies():
         [
             "wget",
             "--load-cookies",
-            constants.EARTH_DATA_COOKIE_FILE,
+            environment.EARTH_DATA_COOKIE_FILE,
             "--save-cookies",
-            constants.EARTH_DATA_COOKIE_FILE,
+            environment.EARTH_DATA_COOKIE_FILE,
             "--keep-session-cookies",
             "https://urs.earthdata.nasa.gov",
         ],

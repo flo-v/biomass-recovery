@@ -65,7 +65,7 @@ def last_of_value(
     last_observation[~np.any(array == value, axis=axis)] = fill_value
     return last_observation
 
-
+# this function is not used, only for testing
 def first_of_value(
     array: np.ndarray,
     value: Union[int, float],
@@ -192,14 +192,14 @@ def compute_recovery_period(
     # years since last deforested or nan if not recovering
     return survey_year - last_deforested.where(recovery)
 
-
+# this function seems not to be used in main pipeline
 # pylint: disable=redefined-outer-name
 def calculate_jrc_last_observation_year(
     tile_identifier: str,
     jrc_class_value: int = JRC_ANNUAL_CHANGE_DEFORESTATION,  # 3 is deforestation class
     dataset: str = "DeforestationYear",
     overwrite: bool = False,
-    final_year: int = 2021,
+    final_year: int = None,
 ) -> bool:
     """
     Calculates the year of last observation of `jrc_class_value`in the JRC AnnualChange
@@ -231,6 +231,8 @@ def calculate_jrc_last_observation_year(
     Returns:
         bool: True, iff the calculation was successful and the output was saved.
     """
+    if final_year == None:
+        raise ValueError("Final_year must be specified")
 
     first_observation_path = (
         JRC_PATH

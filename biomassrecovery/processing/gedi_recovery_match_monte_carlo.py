@@ -9,7 +9,7 @@ import pathlib
 import pyproj
 import utm
 
-from biomassrecovery.import constants
+from biomassrecovery import constants
 from biomassrecovery.processing.jrc_processing import compute_recovery_period
 from biomassrecovery.data.jrc_loading import load_jrc_data
 from biomassrecovery.data.gedi_database import GediDatabase

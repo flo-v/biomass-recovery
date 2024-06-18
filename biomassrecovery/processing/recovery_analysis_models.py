@@ -4,7 +4,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from typing import Tuple
 
-from biomassrecovery.utils import wild_bootstrap as wb
+# from biomassrecovery.utils import wild_bootstrap as wb
 
 
 def _filter_pct_agreement(pct_agreement, recovery_sample):
@@ -104,7 +104,7 @@ def filter_shots(opts, finterface, chunk_id: Tuple[int, str]):
     )
     return filtered
 
-
+"""
 def run_median_regression_model(experiment_id, dataframe):
     formula = "agcd_{experiment_id} ~ r_{experiment_id}".format(
         experiment_id=experiment_id
@@ -150,3 +150,4 @@ def run_ols_medians_model(experiment_id, dataframe):
         result, columns=["a", "la", "ua", "b", "lb", "ub", "rs"]
     )
     return result_df
+"""

@@ -179,7 +179,7 @@ CREATE TABLE public.level_4a_granules (
 ALTER TABLE public.level_4a_granules OWNER TO postgres;
 
 --
--- Name: redd_boxes; Type: TABLE; Schema: public; Owner: sherwood
+-- Name: redd_boxes; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.redd_boxes (
@@ -187,7 +187,7 @@ CREATE TABLE public.redd_boxes (
 );
 
 
-ALTER TABLE public.redd_boxes OWNER TO sherwood;
+ALTER TABLE public.redd_boxes OWNER TO postgres;
 
 ALTER TABLE ONLY public.level_2b_granules
     ADD CONSTRAINT level_2b_granules_pkey PRIMARY KEY (granule_name);
