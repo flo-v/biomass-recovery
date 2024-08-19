@@ -147,7 +147,7 @@ def _get_chunks(
         print("I will work on {} chunks".format(len(chunks)))
         _print_plan(geometry, chunks)
         print("Work plan saved to {}".format(planloc))
-        input("To continue with this work plan, press ENTER >>> ")
+        # input("To continue with this work plan, press ENTER >>> ")
 
     return chunks
 

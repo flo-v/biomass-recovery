@@ -214,10 +214,10 @@ def exec_spark(
 
     if dry_run:
         return
-    if download_only:
-        input("To proceed to download this data, press ENTER >>> ")
-    else:
-        input("To proceed to download AND INGEST this data, press ENTER >>> ")
+    # if download_only:
+    #     input("To proceed to download this data, press ENTER >>> ")
+    # else:
+    #     input("To proceed to download AND INGEST this data, press ENTER >>> ")
     if not os.path.exists(environment.gedi_product_path(product)):
         print(
             "Creating directory {}".format(environment.gedi_product_path(product))

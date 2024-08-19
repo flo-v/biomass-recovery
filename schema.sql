@@ -133,33 +133,40 @@ ALTER TABLE public.level_2b_granules OWNER TO postgres;
 --
 
 CREATE TABLE public.level_4a (
-    granule_name text,
+--  General identifiable data --
     shot_number bigint,
-    beam_type text,
+    granule_name text,
     beam_name text,
+    beam_type text,
+--  Temporal data --
     delta_time double precision,
     absolute_time timestamp with time zone,
+--  Quality data --
     sensitivity real,
-    algorithm_run_flag smallint,
     degrade_flag smallint,
-    l2_quality_flag smallint,
     l4_quality_flag smallint,
     predictor_limit_flag smallint,
     response_limit_flag smallint,
-    surface_flag smallint,
+--  Processing data --
     selected_algorithm smallint,
     selected_mode smallint,
-    elev_lowestmode double precision,
+--  Geolocation data --
     lat_lowestmode double precision,
     lon_lowestmode double precision,
+    elev_lowestmode double precision,
+--  ABGD data --
     agbd double precision,
     agbd_pi_lower double precision,
     agbd_pi_upper double precision,
     agbd_se double precision,
     agbd_t double precision,
     agbd_t_se double precision,
-    pft_class smallint,
-    region_class smallint,
+--  Land cover data --  
+    predict_stratum text,
+    landsat_treecover double precision,
+    urban_focal_window_size smallint,
+    urban_proportion double precision,
+
     geometry public.geometry(Point,4326)
 );
 

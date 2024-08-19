@@ -71,7 +71,9 @@ def filter_granules(
 ) -> gpd.GeoDataFrame:
     # Filter shots for quality criteria, more details:
     # https://daac.ornl.gov/GEDI/guides/GEDI_L4A_AGB_Density.html
-    gdf = gdf[(gdf.algorithm_run_flag == 1) & (gdf.l2_quality_flag == 1) & (gdf.l4_quality_flag == 1) & (gdf.degrade_flag == 0)]
+    # algorithm_run_flag == 1 and l2_quality_flag == 1 are preconditions for l4_quality_flag == 1
+    # degrade_flag == 0 would be important filter when association with age is important
+    gdf = gdf[(gdf.l4_quality_flag == 1)]
     if roi is None:
         return gdf
 

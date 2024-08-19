@@ -148,19 +148,34 @@ def get_gedi_shots(
     gedi_shots = database.query(
         table_name="level_4a",
         columns=[
+            # General data
             "shot_number",
+            "granule_name",
+            "beam_name",
+            "beam_type",
+            # Temporal data
             "absolute_time",
+            # Quality data
+            "sensitivity",
+            "degrade_flag",
+            "predictor_limit_flag", 
+            "response_limit_flag",
+            # Geolocation data
             "lon_lowestmode",
             "lat_lowestmode",
+            "elev_lowestmode",
+            # ABGD data 
             "agbd",
             "agbd_pi_lower",
             "agbd_pi_upper",
             "agbd_se",
-            "l2_quality_flag",
-            "l4_quality_flag",
-            "degrade_flag",
-            "beam_type",
-            "sensitivity",
+            "agbd_t",
+            "agbd_t_se",
+            # Land cover data
+            "predict_stratum",
+            "landsat_treecover",
+            "urban_focal_window_size",
+            "urban_proportion",
         ],
         geometry=geometry,
         crs=crs,
@@ -172,11 +187,10 @@ def get_gedi_shots(
     )
 
     # Preliminary filtering to reduce computation size
-    gedi_shots = gedi_shots[
-        (gedi_shots.l2_quality_flag == 1)
-        & (gedi_shots.l4_quality_flag == 1)
-        & (gedi_shots.degrade_flag == 0)
-    ]
+    # The following is superfluous "gedi_shots.l4_quality_flag == 1"(because done already in gedi_database_loader.filter_granules()) 
+    # but other preliminary filters could be used, like
+    # When we match GEDI and JRC forest age data we need precise postion info
+    gedi_shots = gedi_shots[(gedi_shots.degrade_flag == 0)]
     return gedi_shots
 
 
@@ -287,6 +301,15 @@ def match_monte_carlo(
         [gedi_shots, recovery_sample_df, agbd_sample_df], axis=1
     )
 
+    finterface.save_data(
+        token=token, year=year, data_type="shotinfo", data=gedi_shots
+    )
+    finterface.save_data(
+        token=token, year=year, data_type="recovery", data=recovery_sample
+    )
+    finterface.save_data(
+        token=token, year=year, data_type="agbd", data=agbd_sample
+)
     finterface.save_data(
         token=token, year=year, data_type="master", data=master_df
     )

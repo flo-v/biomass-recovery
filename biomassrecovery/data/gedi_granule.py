@@ -468,44 +468,94 @@ class GediBeam(h5py.Group):
             beam of the granule.
         """
         gedi_l4a_count_start = pd.to_datetime("2018-01-01T00:00:00Z")
+        # # Not needed as acillary data same for all granules
+        # predict_stratum = self["predict_stratum"][:]
+        # ancillary_stratum = self["ANCILLARY/model_data"]['predict_stratum']
+
+        # # extracting the corresponding ancillary_data index for every shot
+        # ancillary_idx = np.zeros(predict_stratum.shape, dtype=int)
+        # for i, byte in enumerate(predict_stratum):
+        #     # Get the index of the byte in the reference array
+        #     index = np.where(ancillary_stratum == byte)[0]
+            
+        #     # If the byte is found, take the first occurrence index
+        #     if index.size > 0:
+        #         ancillary_idx[i] = index[0]
+        #     else:
+        #         # If not found, raise error
+        #         raise ValueError("No matching predict_stratum value found for a shot {} in beam {} in granule {}".format(self["shot_number"][:][i],
+        #                                                                                                                  self.name,
+                                                                                                                        #  self.parent_granule.filename)
+                                                                                                                        #  )
+        
+        # for more details compare: https://daac.ornl.gov/GEDI/guides/GEDI_L4A_AGB_Density.html and https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2022EA002516
         data = {
             # General identifiable data
-            "granule_name": [self.parent_granule.filename] * self.n_shots,
             "shot_number": self["shot_number"][:],
-            "beam_type": [self.beam_type] * self.n_shots,
+            "granule_name": [self.parent_granule.filename] * self.n_shots,
+            # channel Channel identifier
+            # beam Beam identifier
             "beam_name": [self.name] * self.n_shots,
+            "beam_type": [self.beam_type] * self.n_shots,
+
             # Temporal data
-            "delta_time": self["delta_time"][:],
+            "delta_time": self["delta_time"][:], # Time delta since Jan 1 00:00 2018
             "absolute_time": (
                 gedi_l4a_count_start
                 + pd.to_timedelta(self["delta_time"], unit="seconds")
-            ),
+                ),
+            
             # Quality data
-            "sensitivity": self["sensitivity"][:],
-            "algorithm_run_flag": self["algorithm_run_flag"][:],
-            "degrade_flag": self["degrade_flag"][:],
-            "l2_quality_flag": self["l2_quality_flag"][:],
-            "l4_quality_flag": self["l4_quality_flag"][:],
-            "predictor_limit_flag": self["predictor_limit_flag"][:],
-            "response_limit_flag": self["response_limit_flag"][:],
-            "surface_flag": self["surface_flag"][:],
+            "sensitivity": self["sensitivity"][:], # Maximum canopy cover that can be penetrated considering the SNR of the waveform
+            "degrade_flag": self["degrade_flag"][:], # Non-zero values indicate the shot occurred during a degraded period of pointing and/or positioning information
+            # A non-zero tens digit indicates degraded attitude, a non-zero units digit indicates a degraded trajectory. Details: p.18, https://lpdaac.usgs.gov/documents/998/GEDI02_UserGuide_V21.pdf
+            # We only want to save GEDI shots with reliable biomass predictions (l4_quality_flag == 1) to the DB
+            # l4_quality_flag == 1 if: l2_quality_flag == 1, sensitivity > 0.95, landsat_water_persistence < 10, leaf_off_flag = 0 for decideous trees,  urban_proportion < 50
+            # l2_quality_flag == 1 if: algorithm_run_flag = 1, surface_flag = 1, stale_return_flag = 0, sensitivity > 0.9, rx_maxamp > 8 × sd_corrected 
+            "l4_quality_flag": self["l4_quality_flag"][:], # Flag simplifying selection of most useful biomass predictions
+            "predictor_limit_flag": self["predictor_limit_flag"][:], # RH predictor value is (0=in bounds; 1=outside lower bound; 2=outside upper bound) of training data
+            "response_limit_flag": self["response_limit_flag"][:], # AGBD predicton value is (0=in bounds; 1=outside lower bound; 2=outside upper bound) of training data
+            # solar_elevation # Solar elevation angle
+
             # Processing data
             "selected_algorithm": self["selected_algorithm"][:],
-            "selected_mode": self["selected_mode"][:],
+            "selected_mode": self["selected_mode"][:],  # ID of mode selected as lowest non-noise mode
+
             # Geolocation data
-            "elev_lowestmode": self["elev_lowestmode"][:],
-            "lat_lowestmode": self["lat_lowestmode"][:],
-            "lon_lowestmode": self["lon_lowestmode"][:],
+            "lat_lowestmode": self["lat_lowestmode"][:], # Latitude of center of lowest mode
+            "lon_lowestmode": self["lon_lowestmode"][:], # Longitude of center of lowest mode
+            "elev_lowestmode": self["elev_lowestmode"][:], # Elevation of center of lowest mode relative to reference ellipsoid
+            
             # ABGD data
-            "agbd": self["agbd"][:],
-            "agbd_pi_lower": self["agbd_pi_lower"][:],
+            "agbd": self["agbd"][:], # Aboveground biomass density (Mg/ha)
+            "agbd_pi_lower": self["agbd_pi_lower"][:], # prediction intervals for alpha = 0.05
             "agbd_pi_upper": self["agbd_pi_upper"][:],
             "agbd_se": self["agbd_se"][:],
-            "agbd_t": self["agbd_t"][:],
+            "agbd_t": self["agbd_t"][:], # Model prediction in fit units
             "agbd_t_se": self["agbd_t_se"][:],
+
             # Land cover data
-            "pft_class": self["land_cover_data/pft_class"][:],
-            "region_class": self["land_cover_data/region_class"][:],
+            "predict_stratum": self["predict_stratum"][:], # stratum information predicted by non-GEDI data for the 1 km cell (Plant Functional Type (PFT) derived from the MODIS MCD12Q1 V006 product)
+            "landsat_treecover": self["land_cover_data/landsat_treecover"][:],
+            "urban_focal_window_size": self["land_cover_data/urban_focal_window_size"][:], # Window size used to calculate urban_proportion (3=3x3, 5=5x5 pixel window size).
+            "urban_proportion": self["land_cover_data/urban_proportion"][:], # derived from the DLR 12 m resolution TanDEM-X Global Urban Footprint Product.
+            # landsat_water_persistence: The percent UMD GLAD Landsat observations with classified surface water between 2018 and 2019. Values > 80 usually represent permanent water while values < 10 represent permanent land
+            # BEAMXXXX/land_cover_data/pft_class and BEAMXXXX/land_cover_data/region_class are contained in BEAMXXXX/predict_stratum
+            # "pft_class": self["land_cover_data/pft_class"][:],
+            # "region_class": self["land_cover_data/region_class"][:],
+            # landsat_treecover: Tree cover in the year 2010, defined as canopy closure for all vegetation taller than 5 m in height (Hansen et al., 2013) and encoded as a percentage per output grid cell
+           
+            # Ancillary
+            # # Ancillary table is the same for all granules in whole dataset!
+            # predict_stratum: compare landcover, in ancillary we get the matching ancillary data to each predict_stratum
+            # so for each data point the specific predict_stratum is the index for the correct ancillary info
+            # fit_stratum # where the data is from that was used to train the model used for stratum referred to in predict_stratum
+            # model_name # the model used for stratum referred to in predict_stratum
+            # "dof": self.parent_granule["ANCILLARY/model_data"]["dof"][ancillary_idx],
+            # "y_transform": self.parent_granule["ANCILLARY/model_data"]["y_transform"][ancillary_idx],
+            # "bias_correction_name": self.parent_granule["ANCILLARY"]["model_data/bias_correction_name"][ancillary_idx],
+            # "bias_correction_value": self.parent_granule["ANCILLARY"]["model_data/bias_correction_value"][ancillary_idx],
+            # # rse:  residual standard error from the linear regression applied to prediction stratum
         }
         return data
 
