@@ -91,7 +91,12 @@ def overlay_utm_sample_and_recovery_raster(
         0, len(recovery_period_utm.y.data) - 1
     )
     # TODO: fill value in reprojected recovery period raster?
-    return recovery_period_utm.data[y_inds, x_inds]
+    res = recovery_period_utm.data[y_inds, x_inds]
+    labels = recovery_period_utm.coords["labels"][y_inds, x_inds]
+    print("######new############################")
+    print(res)
+    print(labels)
+    return res, labels
 
 
 def jrc_recovery(
@@ -123,7 +128,7 @@ def jrc_recovery(
     # but the GEDI shots may have been taken earlier
     # TODO(amelia): Find a way to usefully cache these values.
     logger.info("Computing recovery period until year %s", year)
-    recovery_period = compute_recovery_period(
+    recovery_period, recovery_land_type = compute_recovery_period(
         annual_change,
         first_deforestation,
         first_degradation,
@@ -133,7 +138,7 @@ def jrc_recovery(
     annual_change.close()
     first_degradation.close()
     first_deforestation.close()
-    return recovery_period
+    return recovery_period, recovery_land_type
 
 
 def get_gedi_shots(
@@ -217,7 +222,7 @@ def match_monte_carlo(
             }
         )
 
-    recovery_period = jrc_recovery(
+    recovery_period, recovery_land_type = jrc_recovery(
         geometry=geometry,
         year=year,
         include_degraded=include_degraded,
@@ -225,6 +230,7 @@ def match_monte_carlo(
     )
 
     ## 2. Quickly filter GEDI shots to reduce the computation size
+    # leaves recovery_period array unchanged
     gedi_shots = quickfilter_shots(gedi_shots, recovery_period)
     if len(gedi_shots) == 0:
         logger.warning(
@@ -254,8 +260,15 @@ def match_monte_carlo(
     )
     # Note: this reprojection does not 'smear' pixel values
     # However, it may add fill pixels. These will be set to np.nan --
-    # worth noting that this is the same fill value as non-recovering pixels
+    # worth noting that this is the same fill value as non-recovering pixels 
+    print(recovery_period.shape)
+    print(recovery_land_type.shape)
+
     recovery_period_utm = recovery_period.rio.reproject(utm_crs, nodata=np.nan)
+    # recovery_land_type_utm = recovery_land_type.rio.reproject(utm_crs, nodata=np.nan)
+    print("----------------------------------------------------------------------------------")
+    print(recovery_period_utm.shape)
+    # print(recovery_land_type_utm.shape)
 
     ## 4. Generate random sample of shot locations and AGBD values
     sample_shape = (len(gedi_shots), num_iterations)
@@ -278,7 +291,8 @@ def match_monte_carlo(
     agbd_sample = agbd_sample.clip(0, None)
 
     ## 5. Using sampled shot locations, get sample of recovery values
-    recovery_sample = overlay_utm_sample_and_recovery_raster(
+    # recovery from land type info
+    recovery_sample, recovery_land_type = overlay_utm_sample_and_recovery_raster(
         easting_sample, northing_sample, recovery_period_utm
     )
 
@@ -294,11 +308,17 @@ def match_monte_carlo(
     recovery_period.close()
     recovery_cols = ["r_{}".format(i) for i in range(num_iterations)]
     recovery_sample_df = pd.DataFrame(recovery_sample, columns=recovery_cols)
+    recovery_land_type_df = pd.DataFrame(recovery_land_type)
+    print("############################################")
+    print(recovery_sample.shape)
+    print(recovery_sample)
+    print(recovery_sample_df.shape)
+    print(recovery_sample_df)
     agbd_cols = ["a_{}".format(i) for i in range(num_iterations)]
     agbd_sample_df = pd.DataFrame(agbd_sample, columns=agbd_cols)
     gedi_shots = gedi_shots.reset_index(drop=True)
     master_df = pd.concat(
-        [gedi_shots, recovery_sample_df, agbd_sample_df], axis=1
+        [gedi_shots, recovery_land_type_df, recovery_sample_df, agbd_sample_df], axis=1
     )
 
     finterface.save_data(
