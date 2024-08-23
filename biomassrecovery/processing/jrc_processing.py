@@ -155,14 +155,15 @@ def compute_recovery_period(
             annual_change,
             JRC_ANNUAL_CHANGE_OTHER_LAND_USE,
         )
+        # create labels that show if recovery from previous other land type (0) or forest (1)
+        recovery_land_type = (last_deforested.data >= last_nonforest.data).astype(np.float32)
+        
         last_deforested.data = np.maximum(
             last_deforested.data, last_nonforest.data
         )
-        # create labels that show if recovery from previous other land type (0) or forest (1)
-        recovery_land_type = (last_deforested.data >= last_nonforest.data).astype(int)
-        # create array with same coordintate labels
+        # create array with same coordintate labels and recovery_land_type as data
         recovery_land_type_DataArray = last_deforested.copy(deep=True)
-        # recovery_land_type_DataArray.data = recovery_land_type
+        recovery_land_type_DataArray.data = recovery_land_type
 
     # compute logical indices to know which locations to use
     if not include_degraded:
@@ -196,11 +197,11 @@ def compute_recovery_period(
     # end of logical indices computation
 
     if as_startyear:
-        return last_deforested.where(recovery), recovery_land_type_DataArray
+        return last_deforested.where(recovery), recovery_land_type_DataArray.where(recovery)
     
     # years since last deforested or nan if not recovering
     recovery_period = survey_year - last_deforested.where(recovery)
-    return recovery_period, recovery_land_type_DataArray
+    return recovery_period, recovery_land_type_DataArray.where(recovery)
 
 # this function seems not to be used in main pipeline
 # pylint: disable=redefined-outer-name
