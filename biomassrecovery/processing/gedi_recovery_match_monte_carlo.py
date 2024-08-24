@@ -154,32 +154,11 @@ def get_gedi_shots(
         columns=[
             # General data
             "shot_number",
-            "granule_name",
-            "beam_name",
-            "beam_type",
-            # Temporal data
-            "absolute_time",
             # Quality data
-            "sensitivity",
             "degrade_flag",
-            "predictor_limit_flag", 
-            "response_limit_flag",
             # Geolocation data
             "lon_lowestmode",
             "lat_lowestmode",
-            "elev_lowestmode",
-            # ABGD data 
-            "agbd",
-            "agbd_pi_lower",
-            "agbd_pi_upper",
-            "agbd_se",
-            "agbd_t",
-            "agbd_t_se",
-            # Land cover data
-            "predict_stratum",
-            "landsat_treecover",
-            "urban_focal_window_size",
-            "urban_proportion",
         ],
         geometry=geometry,
         crs=crs,
@@ -264,7 +243,7 @@ def match_monte_carlo(
     recovery_period_utm = recovery_period.rio.reproject(utm_crs, nodata=np.nan)
     recovery_land_type_utm = recovery_land_type.rio.reproject(utm_crs, nodata=np.nan)
 
-    ## 4. Generate random sample of shot locations and AGBD values
+    ## 4. Generate random sample of shot locations
     sample_shape = (len(gedi_shots), num_iterations)
     rng = np.random.default_rng()
     easting_sample = rng.normal(
@@ -277,25 +256,12 @@ def match_monte_carlo(
         LOCATION_DIST_SD,
         size=sample_shape,
     )
-    agbd_sample = rng.normal(
-        np.expand_dims(gedi_shots.agbd, axis=1),
-        np.expand_dims(gedi_shots.agbd_se, axis=1),
-        size=sample_shape,
-    )
-    agbd_sample = agbd_sample.clip(0, None)
 
     ## 5. Using sampled shot locations, get sample of recovery values
     # recovery from land type info
     recovery_sample, recovery_land_type_sample = overlay_utm_sample_and_recovery_raster(
         easting_sample, northing_sample, recovery_period_utm, recovery_land_type_utm
     )
-
-    if not (recovery_sample.shape[0] == len(agbd_sample)):
-        raise RuntimeError(
-            (
-                "Cannot match recovery samples (shape = {}) with agbd (n = {})"
-            ).format(recovery_sample.shape, len(agbd_sample))
-        )
 
     # Close rasters and return results
     recovery_period_utm.close()

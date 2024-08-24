@@ -7,7 +7,7 @@ import pathlib
 import rioxarray as rxr
 
 from biomassrecovery.environment import ENV_VARS_PATH
-from biomassrecovery.utils.logging import get_logger
+from biomassrecovery.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
 
