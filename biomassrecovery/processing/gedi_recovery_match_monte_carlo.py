@@ -52,7 +52,7 @@ def get_idx(array, values):
 
 
 def quickfilter_shots(gedi_shots, recovery_period):
-    # Remove all shots where fewer than four of nine surrounding pixels are recovering
+    # Remove all shots where fewer-equal than four of nine surrounding pixels are recovering (at least 5 out of 9 need to be recovering)
     # Otherwise, we'll be saving a lot of data unnecessarily
     x_inds = get_idx(recovery_period.x.data, gedi_shots.lon_lowestmode.values)
     y_inds = get_idx(recovery_period.y.data, gedi_shots.lat_lowestmode.values)
@@ -304,22 +304,12 @@ def match_monte_carlo(
     recovery_land_type_cols = ["lt_{}".format(i) for i in recovery_cols]
     recovery_sample_df = pd.DataFrame(recovery_sample, columns=recovery_cols)
     recovery_land_type_df = pd.DataFrame(recovery_land_type_sample, columns=recovery_land_type_cols)
-    agbd_cols = ["a_{}".format(i) for i in range(num_iterations)]
-    agbd_sample_df = pd.DataFrame(agbd_sample, columns=agbd_cols)
     gedi_shots = gedi_shots.reset_index(drop=True)
+    shot_number = gedi_shots.iloc[:, 0] # only need shot_number from here on
     master_df = pd.concat(
-        [gedi_shots, recovery_sample_df, recovery_land_type_df, agbd_sample_df], axis=1
+        [shot_number, recovery_sample_df, recovery_land_type_df], axis=1
     )
-
-    finterface.save_data(
-        token=token, year=year, data_type="shotinfo", data=gedi_shots
-    )
-    finterface.save_data(
-        token=token, year=year, data_type="recovery", data=recovery_sample
-    )
-    finterface.save_data(
-        token=token, year=year, data_type="agbd", data=agbd_sample
-)
+    
     finterface.save_data(
         token=token, year=year, data_type="master", data=master_df
     )

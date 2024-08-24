@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 from typing import Tuple
+import json
 
 # from biomassrecovery.utils import wild_bootstrap as wb
 
@@ -25,9 +26,12 @@ def _filter_pct_agreement(pct_agreement, recovery_sample):
 
 def _filter_pct_nonnan(pct_agreement, recovery_sample):
     # Filter for points with at least x% non-nan values (x% recovering forest)
-    return (
-        np.sum(~np.isnan(recovery_sample), axis=1) / recovery_sample.shape[1]
-    ) >= pct_agreement / 100
+    # print("Filtering happens@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    non_na_ratio = np.sum(~np.isnan(recovery_sample), axis=1) / recovery_sample.shape[1]
+    res = non_na_ratio >= pct_agreement / 100
+    # print(non_na_ratio)
+    # print(res)
+    return res
 
 
 def _mode(arr, axis):
@@ -50,58 +54,66 @@ def _mode(arr, axis):
         return mode_count, mode_val
     return np.array([], dtype=np.float64), np.array([], dtype=np.float64)
 
+def convert_to_json_compatible(value):
+    return {str(k): int(v) for k, v in value.items()}
 
 def filter_shots(opts, finterface, chunk_id: Tuple[int, str]):
-
     year, token = chunk_id
-    recovery_sample = finterface.load_data(
-        token=token, year=year, data_type="recovery"
-    )
+    master_df = finterface.load_data(token=token, year=year, data_type="master")
+    recovery_sample = master_df.iloc[:,1:1001].to_numpy()
 
-    if 'pctnonan' in opts.filter_regime.keys():
-        filter_idx = _filter_pct_nonnan(opts.filter_regime['pctnonan'], recovery_sample)
-        filtered_recovery = recovery_sample[filter_idx]
+    # due to preliminary filtering (quickfilter_shots(): at least 5 out of 9 of the mean-location-estimate surrounding pixels need to be recovering) 
+    # differences in low numbers of pctnonan (eg. 10 and 20) have less filtering impact because shots are already selected due to surrounding pixels (which have probabilistically most weight in lcoation distribution)
+
+    # if clause unnecessary as script doesn't run without --filter_pctnonan flag
+    # if 'pctnonan' in opts.filter_regime.keys():
+    filter_idx = _filter_pct_nonnan(opts.filter_regime['pctnonan'], recovery_sample)
+    filtered_recovery = recovery_sample[filter_idx]
+    del recovery_sample # Free up some memory
     
     if 'maxstd' in opts.filter_regime.keys():
-        filter_idx2 = np.std(filtered_recovery, axis=1) <= opts.filter_regime['maxstd']
-        filtered_recovery = filtered_recovery[filter_idx2]
+        # the way this was originally coded (using "np.std()") filters out every shot containing one sampled NA value making the pctnonan flag useless
+        # this does filtering according to std allowing NA values in the distribution:
+        filter_idx2 = np.nanstd(filtered_recovery, axis=1) <= opts.filter_regime['maxstd']
 
-    hist_summary = pd.DataFrame(
-        {
-            "min": np.min(filtered_recovery, axis=1),
-            "max": np.max(filtered_recovery, axis=1),
-            "p75": np.quantile(filtered_recovery, q=0.75, axis=1),
-            "median": np.quantile(filtered_recovery, q=0.50, axis=1),
-            "p25": np.quantile(filtered_recovery, q=0.25, axis=1),
-            "mean": np.mean(filtered_recovery, axis=1),
-            "std": np.std(filtered_recovery, axis=1),
-            "var": np.var(filtered_recovery, axis=1),
-        }
-    )
-    counts, values = _mode(filtered_recovery, axis=1)
-    hist_summary["mode_counts"] = counts
-    hist_summary["mode_vals"] = values
-
-    # Free up some memory before loading master df
-    del filtered_recovery
-    del recovery_sample
-    master_df = finterface.load_data(token=token, year=year, data_type="master")
     filtered = master_df[filter_idx]
+    del master_df # Free up some memory
+
     if 'maxstd' in opts.filter_regime.keys():
         filtered = filtered[filter_idx2]
     # Note: Cannot assign df["shot_number"] = filtered["shot_number"]
     # This implicitly converts to float64 (for unknown reasons)
     # which is not big enough to hold the shot numbers, and silently makes them NaN.
-    hist_summary["shot_number"] = filtered.shot_number.values
+
+    # summaries recovery_period for both recovery_land_types
+    recovery_other_land = []
+    recovery_forest = []
+    for i in range(filtered.shape[0]):
+        # other_land (non_forest)
+        tmp_idx = (filtered.iloc[i, 1001:2001] == 0).to_numpy()
+        temp_recovery_period = filtered.iloc[i, 1:1001].loc[tmp_idx]
+        unique_elements, counts = np.unique(temp_recovery_period, return_counts=True)
+        recovery_other_land.append(dict(zip(unique_elements, counts)))
+        # forest
+        tmp_idx = (filtered.iloc[i, 1001:2001] == 1).to_numpy()
+        temp_recovery_period = filtered.iloc[i, 1:1001].loc[tmp_idx]
+        unique_elements, counts = np.unique(temp_recovery_period, return_counts=True)
+        recovery_forest.append(dict(zip(unique_elements, counts)))
+
+    filtered = pd.DataFrame({
+        'shot_number': filtered.iloc[:, 0], 
+        'recovery_other_land': recovery_other_land, 
+        'recovery_forest': recovery_forest
+        })
+    
+    # Convert dictionary columns to JSON strings
+    filtered['recovery_other_land'] = filtered['recovery_other_land'].apply(lambda x: json.dumps(convert_to_json_compatible(x)))
+    filtered['recovery_forest'] = filtered['recovery_forest'].apply(lambda x: json.dumps(convert_to_json_compatible(x)))
+
     finterface.save_data(
         token=token, year=year, data_type="filtered", data=filtered
     )
-    finterface.save_data(
-        token=token,
-        year=year,
-        data_type="hist",
-        data=hist_summary,
-    )
+
     return filtered
 
 """
