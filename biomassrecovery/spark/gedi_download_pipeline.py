@@ -164,7 +164,7 @@ def _write_db(product, gedi_data):
         # general data
         gedi_data['shot_number'] = gedi_data['shot_number'].astype(np.int64)
         gedi_data['delta_time'] = gedi_data['delta_time'].astype(np.float64)
-        # absolut_time is fine as it is
+        # absolute_time is fine as it is
         gedi_data['predict_stratum'] = gedi_data['predict_stratum'].astype(np.uint8)
         # quality data
         gedi_data['beam_type'] = gedi_data['beam_type'].astype(np.uint8)
@@ -190,7 +190,11 @@ def _write_db(product, gedi_data):
         #     print(gedi_data.drop(columns=['absolute_time', 'geometry']).dtypes)
         #     print(gedi_data.drop(columns=['delta_time']).dtypes)
         #     # print(gedi_data[columns_parquet].iloc[0, :])
-        
+
+        # terrible practice, I'm sorry haha
+        parquet_path = '/Users/remotelogin2/data/data_intermediate/{}.parquet'.format(granule_name)
+        gedi_data.drop(columns=['absolute_time', 'geometry']).to_parquet(parquet_path)
+
         gedi_data.drop(columns=['delta_time']).to_postgis(
             name=_product_table(product),
             con=con,
