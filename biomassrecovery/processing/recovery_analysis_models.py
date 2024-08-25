@@ -26,11 +26,8 @@ def _filter_pct_agreement(pct_agreement, recovery_sample):
 
 def _filter_pct_nonnan(pct_agreement, recovery_sample):
     # Filter for points with at least x% non-nan values (x% recovering forest)
-    # print("Filtering happens@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
     non_na_ratio = np.sum(~np.isnan(recovery_sample), axis=1) / recovery_sample.shape[1]
     res = non_na_ratio >= pct_agreement / 100
-    # print(non_na_ratio)
-    # print(res)
     return res
 
 
@@ -72,7 +69,7 @@ def filter_shots(opts, finterface, chunk_id: Tuple[int, str]):
     del recovery_sample # Free up some memory
     
     if 'maxstd' in opts.filter_regime.keys():
-        # the way this was originally coded (using "np.std()") filters out every shot containing one sampled NA value making the pctnonan flag useless
+        # the way this was originally coded (using "np.std()") filters out every shot containing one sampled NA value making the pctnonan flag useless incase of filtering for std
         # this does filtering according to std allowing NA values in the distribution:
         filter_idx2 = np.nanstd(filtered_recovery, axis=1) <= opts.filter_regime['maxstd']
 

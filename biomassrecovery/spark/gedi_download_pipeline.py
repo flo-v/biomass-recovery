@@ -1,6 +1,7 @@
 #! /home/ah2174/biomass-recovery/venv/bin/python
 import os
 import pathlib
+import numpy as np
 from pyspark.sql import SparkSession
 
 
@@ -121,12 +122,14 @@ def _write_db(product, gedi_data):
         if gedi_data.empty:
             return
         gedi_data = gedi_data.astype({"shot_number": "int64"})
+        granule_name = gedi_data["granule_name"].head(1).item()
         granules_entry = pd.DataFrame(
             data={
-                "granule_name": [gedi_data["granule_name"].head(1).item()],
+                "granule_name": [granule_name],
                 "created_date": [pd.Timestamp.utcnow()],
             }
         )
+        # these steps are done for every granule
         granules_entry.to_sql(
             name=_granules_table(product),
             con=con,
@@ -134,7 +137,61 @@ def _write_db(product, gedi_data):
             if_exists="append",
         )
 
-        gedi_data.to_postgis(
+        # Change strings to indices for efficient storage
+
+        # beam_type: coverage == 0, full == 1
+        beam_type_values = ['coverage', 'full']
+        # Create a dictionary mapping stratum values to their index positions
+        beam_type_to_index_map = {value: idx for idx, value in enumerate(beam_type_values)}
+        # Replace the byte stratum with their corresponding indices using map
+        gedi_data['beam_type'] = gedi_data['beam_type'].map(beam_type_to_index_map)
+
+        # predict_stratum
+        stratum_values = [b'DBT_Af', b'DBT_Au', b'DBT_Eu', b'DBT_NAs', b'DBT_SA', b'DBT_SAs', b'DBT_NAm',
+                    b'EBT_Af', b'EBT_Au', b'EBT_Eu', b'EBT_NAs', b'EBT_SA', b'EBT_SAs', b'EBT_NAm',
+                    b'ENT_Af', b'ENT_Au', b'ENT_Eu', b'ENT_NAs', b'ENT_SA', b'ENT_SAs', b'ENT_NAm',
+                    b'DNT_Af', b'DNT_Au', b'DNT_Eu', b'DNT_NAs', b'DNT_SA', b'DNT_SAs', b'DNT_NAm',
+                    b'GSW_Af', b'GSW_Au', b'GSW_Eu', b'GSW_NAs', b'GSW_SA', b'GSW_SAs', b'GSW_NAm']
+        # Create a dictionary mapping stratum values to their index positions
+        stratum_to_index_map = {value: idx for idx, value in enumerate(stratum_values)}
+        # Replace the byte stratum with their corresponding indices using map
+        gedi_data['predict_stratum'] = gedi_data['predict_stratum'].map(stratum_to_index_map)
+
+        gedi_data = gedi_data.drop(columns=['granule_name', 'beam_name'])
+
+        # making sure of proper types
+
+        # general data
+        gedi_data['shot_number'] = gedi_data['shot_number'].astype(np.int64)
+        gedi_data['delta_time'] = gedi_data['delta_time'].astype(np.float64)
+        # absolut_time is fine as it is
+        gedi_data['predict_stratum'] = gedi_data['predict_stratum'].astype(np.uint8)
+        # quality data
+        gedi_data['beam_type'] = gedi_data['beam_type'].astype(np.uint8)
+        gedi_data['sensitivity'] = gedi_data['sensitivity'].astype(np.float32)
+        gedi_data['degrade_flag'] = gedi_data['degrade_flag'].astype(np.uint8)
+        gedi_data['predictor_limit_flag'] = gedi_data['predictor_limit_flag'].astype(np.uint8)
+        gedi_data['response_limit_flag'] = gedi_data['response_limit_flag'].astype(np.uint8)
+        gedi_data['l4_quality_flag'] = gedi_data['l4_quality_flag'].astype(np.uint8)
+        # Geo data
+        gedi_data['lat_lowestmode'] = gedi_data['lat_lowestmode'].astype(np.float64)
+        gedi_data['lon_lowestmode'] = gedi_data['lon_lowestmode'].astype(np.float64)
+        gedi_data['elev_lowestmode'] = gedi_data['elev_lowestmode'].astype(np.float32)
+        # biomass data
+        gedi_data['agbd_t'] = gedi_data['agbd_t'].astype(np.float32)
+        gedi_data['agbd_t_se'] = gedi_data['agbd_t_se'].astype(np.float32)
+        # GEDI independent data
+        gedi_data['landsat_treecover'] = gedi_data['landsat_treecover'].astype(np.float32)
+        gedi_data['urban_focal_window_size'] = gedi_data['urban_focal_window_size'].astype(np.uint8)
+        gedi_data['urban_proportion'] = gedi_data['urban_proportion'].astype(np.float32)
+        # geometry is fine as it is
+        
+        # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        #     print(gedi_data.drop(columns=['absolute_time', 'geometry']).dtypes)
+        #     print(gedi_data.drop(columns=['delta_time']).dtypes)
+        #     # print(gedi_data[columns_parquet].iloc[0, :])
+        
+        gedi_data.drop(columns=['delta_time']).to_postgis(
             name=_product_table(product),
             con=con,
             index=False,
@@ -242,7 +299,7 @@ def exec_spark(
     else:
         # Parse each file into a geo data frame
         parsed_files = files.map(_parse_file)
-        # Filter the geodataframe for suitable shots
+        # Filter the geodataframe for suitable shots (l4_quality_flag == 1)
         filtered_files = parsed_files.map(_filter_file)
         # coalesce to 8 partitions to avoid overloading the database with many connections.
         # The number 8 was chosen sort of arbitrarily, could increase or decrease.

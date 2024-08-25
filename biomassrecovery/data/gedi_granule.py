@@ -518,8 +518,8 @@ class GediBeam(h5py.Group):
             # solar_elevation # Solar elevation angle
 
             # Processing data
-            "selected_algorithm": self["selected_algorithm"][:],
-            "selected_mode": self["selected_mode"][:],  # ID of mode selected as lowest non-noise mode
+            # "selected_algorithm": self["selected_algorithm"][:],
+            # "selected_mode": self["selected_mode"][:],  # ID of mode selected as lowest non-noise mode
 
             # Geolocation data
             "lat_lowestmode": self["lat_lowestmode"][:], # Latitude of center of lowest mode
@@ -527,10 +527,10 @@ class GediBeam(h5py.Group):
             "elev_lowestmode": self["elev_lowestmode"][:], # Elevation of center of lowest mode relative to reference ellipsoid
             
             # ABGD data
-            "agbd": self["agbd"][:], # Aboveground biomass density (Mg/ha)
-            "agbd_pi_lower": self["agbd_pi_lower"][:], # prediction intervals for alpha = 0.05
-            "agbd_pi_upper": self["agbd_pi_upper"][:],
-            "agbd_se": self["agbd_se"][:],
+            # "agbd": self["agbd"][:], # Aboveground biomass density (Mg/ha)
+            # "agbd_pi_lower": self["agbd_pi_lower"][:], # prediction intervals for alpha = 0.05
+            # "agbd_pi_upper": self["agbd_pi_upper"][:],
+            # "agbd_se": self["agbd_se"][:],
             "agbd_t": self["agbd_t"][:], # Model prediction in fit units
             "agbd_t_se": self["agbd_t_se"][:],
 
