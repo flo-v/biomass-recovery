@@ -137,14 +137,14 @@ CREATE TABLE public.level_4a (
     shot_number bigint,
 --  granule_name text,
 --  beam_name text,
-    beam_type tinyint,
+    beam_type smallint,
 --  Temporal data --
 --  delta_time double precision,
     absolute_time timestamp with time zone,
 --  Quality data --
     sensitivity float,
     degrade_flag smallint,
-    l4_quality_flag tinyint,
+    l4_quality_flag smallint,
     predictor_limit_flag smallint,
     response_limit_flag smallint,
 --  Processing data --
@@ -162,9 +162,9 @@ CREATE TABLE public.level_4a (
     agbd_t float,
     agbd_t_se float,
 --  Land cover data --  
-    predict_stratum tinyint,
+    predict_stratum smallint,
     landsat_treecover float,
-    urban_focal_window_size tinyint,
+    urban_focal_window_size smallint,
     urban_proportion float,
 
     geometry public.geometry(Point,4326)
