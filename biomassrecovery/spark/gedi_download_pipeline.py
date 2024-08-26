@@ -159,7 +159,7 @@ def _write_db(product, gedi_data):
 
         gedi_data = gedi_data.drop(columns=['granule_name', 'beam_name'])
 
-        # making sure of proper types
+        # making sure of proper types, for most superfluous actually
 
         # general data
         gedi_data['shot_number'] = gedi_data['shot_number'].astype(np.int64)
@@ -235,7 +235,8 @@ def exec_spark(
     granule_metadata = _query_granule_metadata(bounds, product).drop_duplicates(
         subset="granule_name"
     )
-    print("Total granules found: ", len(granule_metadata.index) - 1)
+    # before len(required_granules.index) - 1, but this reports one granule to few
+    print("Total granules found: ", len(granule_metadata.index))
     print("Total file size (MB): ", granule_metadata["granule_size"].sum())
 
     if dry_run:
@@ -267,7 +268,8 @@ def exec_spark(
         print("All granules for this region already present in the database")
         return
 
-    print("Granules to download: ", len(required_granules.index) - 1)
+    # before len(required_granules.index) - 1, but this reports one granule to few
+    print("Granules to download: ", len(required_granules.index))
     print(
         "File size to download (MB): ",
         required_granules["granule_size"].sum(),
